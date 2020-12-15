@@ -157,13 +157,13 @@ public class ledControl extends AppCompatActivity implements SensorEventListener
                 orientations[i] = (float)(Math.toDegrees(orientations[i]));
             }
 
-            if(orientations[2] > 45) {
-                getWindow().getDecorView().setBackgroundColor(Color.YELLOW);
-            } else if(orientations[2] < -45) {
-                getWindow().getDecorView().setBackgroundColor(Color.BLUE);
-            } else if(Math.abs(orientations[2]) < 10) {
-                getWindow().getDecorView().setBackgroundColor(Color.WHITE);
-            }
+//            if(orientations[2] > 45) {
+//                getWindow().getDecorView().setBackgroundColor(Color.YELLOW);
+//            } else if(orientations[2] < -45) {
+//                getWindow().getDecorView().setBackgroundColor(Color.BLUE);
+//            } else if(Math.abs(orientations[2]) < 10) {
+//                getWindow().getDecorView().setBackgroundColor(Color.WHITE);
+//            }
 
             //Log.e("AAAA0" , orientations[0]+"");
             //Log.e("AAAA1" , orientations[1]+"");
@@ -315,6 +315,18 @@ public class ledControl extends AppCompatActivity implements SensorEventListener
         try {
             jsonData.put("getter" , "arduino");
             jsonData.put("enable_rotate" , enableRotate ? "true" : "false");
+            led_on_off(jsonData.toString());
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void move(View view) {
+        JSONObject jsonData = new JSONObject();
+        try {
+            jsonData.put("getter" , "arduino");
+            //jsonData.put("speed_robot" , mAccel);
+            jsonData.put("speed_robot" , 2000);
             led_on_off(jsonData.toString());
         } catch (JSONException e) {
             e.printStackTrace();
