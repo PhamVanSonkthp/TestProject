@@ -17,15 +17,15 @@ public class MainActivity3 extends AppCompatActivity implements SensorEventListe
     SensorManager mSenManager;
 
     boolean started = true;
+    private float[] acc_3 = new float[4];
+    float[] grav = new float[4];
+    float[] mag = new float[4];
+    float[] acc_4 = new float[4];
+    float[] acc_Earth_coordinates = new float[4];
+    float[] input_R = new float[16];
+    float[] invert_R = new float[16];
+    float[] I = new float[16];
 
-    float mag[] = new float[3];
-    float grav[] = new float[3];
-    float acc_3[] = new float[3];
-    float acc_4[] = new float[4];
-    float input_R[] = new float[9];
-    float I[] = new float[9];
-    float invert_R[] = new float[9];
-    float acc_Earth_coordinates[] = new float[3];
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -96,8 +96,8 @@ public class MainActivity3 extends AppCompatActivity implements SensorEventListe
                             acc_Earth_coordinates[0], acc_Earth_coordinates[1],
                             acc_Earth_coordinates[2]);
                     //AccelSensor.add(accel);
-                    Log.e("AAAA" , accel.getX()+"");
-                    Log.e("AAAA" , accel.getY()+"");
+                    //Log.e("AAAA" , accel.getX()+"");
+                    //Log.e("AAAA" , accel.getY()+"");
                     Log.e("AAAA" , accel.getZ()+"");
 
                     acc_3 = null;
