@@ -124,7 +124,6 @@ public class ledControl extends AppCompatActivity implements SensorEventListener
         }
         catch (Exception e){
         }
-
     }
 
     @Override

@@ -8,6 +8,7 @@ import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.util.Log;
+import android.widget.TextView;
 
 import static android.view.KeyCharacterMap.ALPHA;
 
@@ -26,16 +27,26 @@ public class MainActivity3 extends AppCompatActivity implements SensorEventListe
     float[] invert_R = new float[16];
     float[] I = new float[16];
 
+    TextView txtStatus;
+
+    long lastUpdateTime = 0;
+
+    float limit_idle = 1f;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main3);
+        addController();
         mSenManager = (SensorManager) getSystemService(SENSOR_SERVICE);
         accelerometer = mSenManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         magnetometer = mSenManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
         gyroscopeSensor = mSenManager.getDefaultSensor(Sensor.TYPE_GRAVITY);
         RegisterSensor();
+    }
+
+    private void addController() {
+        txtStatus = findViewById(R.id.txt_status);
     }
 
     public void RegisterSensor() {
@@ -78,9 +89,9 @@ public class MainActivity3 extends AppCompatActivity implements SensorEventListe
                 grav = event.values.clone();
             }
 
-            if (acc_3 != null && grav != null && mag != null) {
+            if (acc_3 != null && grav != null && mag != null ) {
 
-                if (SensorManager.getRotationMatrix(input_R, I, grav, mag)) {
+                if (SensorManager.getRotationMatrix(input_R, I, grav, mag) ) {
 
                     android.opengl.Matrix.invertM(invert_R, 0, input_R, 0);
                     acc_4[0] = acc_3[0];
@@ -96,16 +107,57 @@ public class MainActivity3 extends AppCompatActivity implements SensorEventListe
                             acc_Earth_coordinates[0], acc_Earth_coordinates[1],
                             acc_Earth_coordinates[2]);
                     //AccelSensor.add(accel);
-                    //Log.e("AAAA" , accel.getX()+"");
+                    Log.e("AAAA" , accel.getX()+"");
                     //Log.e("AAAA" , accel.getY()+"");
-                    Log.e("AAAA" , accel.getZ()+"");
-
+                    //Log.e("AAAA" , accel.getZ()+"");
+                    //setStatus(accel.getX() , accel.getY());
                     acc_3 = null;
                     grav = null;
                     mag = null;
+                    setStatus(accel.getX() , accel.getY());
+                    lastUpdateTime = System.currentTimeMillis();
                 }
             }
         }
+    }
+
+    private void setStatus(float x , float y){
+
+
+        if (x < limit_idle && x > -limit_idle && y < limit_idle && y > -limit_idle){
+            //txtStatus.setText("Idle");
+        }else {
+            boolean isUp = false, isRight = false, isLeft = false, isDown = false;
+            if (x >= limit_idle && y < 2 && y > -2){
+                isUp = true;
+            }
+            if (x <= -limit_idle && y < 2 && y > -2){
+                isDown = true;
+            }
+            if (y >= limit_idle && x < 2 && x > -2){
+                isLeft = true;
+            }
+            if (y <= -limit_idle && x < 2 && x > -2){
+                isRight = true;
+            }
+
+            String status = "";
+            if (isUp){
+                status += "Up ";
+            }
+            if (isDown){
+                status += "Down ";
+            }
+            if (isLeft){
+                status += "Left ";
+            }
+            if (isRight){
+                status += "Right ";
+            }
+
+            txtStatus.setText(status);
+        }
+
     }
 
     @Override
