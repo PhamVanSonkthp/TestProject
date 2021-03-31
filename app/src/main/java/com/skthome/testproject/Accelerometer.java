@@ -36,18 +36,9 @@ public class Accelerometer extends AppCompatActivity implements SensorEventListe
     Set<BluetoothDevice> pairedDevices;
     static final UUID myUUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
     String address = null , name=null;
-    TextView t1;
+    TextView t1 , txtDegree;
 
     ImageView imageView;
-
-    StringBuilder builder = new StringBuilder();
-
-    float [] history = new float[2];
-    String [] direction = {"NONE","NONE"};
-
-    ArrayList<Float> arrHistoryAsisX = new ArrayList<>();
-    ArrayList<Float> arrHistoryAsisY = new ArrayList<>();
-
 
     private Sensor accelerometer , accelerometerCompass , magnetometerCompass;
     SensorManager sensorManager;
@@ -66,8 +57,6 @@ public class Accelerometer extends AppCompatActivity implements SensorEventListe
 
     float velocityMin = 0.5f;
 
-    TextView txtD;
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -75,9 +64,8 @@ public class Accelerometer extends AppCompatActivity implements SensorEventListe
 
 
         imageView = findViewById(R.id.image);
-        txtD = findViewById(R.id.txt_d);
-
         t1= findViewById(R.id.textView1);
+        txtDegree= findViewById(R.id.txtDegree);
 
         sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
         accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
@@ -146,7 +134,6 @@ public class Accelerometer extends AppCompatActivity implements SensorEventListe
     @Override
     public void onSensorChanged(SensorEvent sensorEvent) {
         Sensor sensor = sensorEvent.sensor;
-
         if (sensorEvent.sensor == accelerometerCompass){
             System.arraycopy(sensorEvent.values , 0  , lastAccelerometer , 0 , sensorEvent.values.length);
             isLastAccelerometerArrayCopied = true;
@@ -155,204 +142,37 @@ public class Accelerometer extends AppCompatActivity implements SensorEventListe
             isLastMagnetometerArrayCopied = true;
         }
 
-        if (sensor.getType() == Sensor.TYPE_LINEAR_ACCELERATION ){
-            float xChange = history[0] - sensorEvent.values[0];
-            float yChange = history[1] - sensorEvent.values[1];
+        if (System.currentTimeMillis() - lastUpdateTime > 200 && isLastMagnetometerArrayCopied && isLastMagnetometerArrayCopied){
+            SensorManager.getRotationMatrix(rotateMatrix , null , lastAccelerometer , lastMagnetometer);
+            SensorManager.getOrientation(rotateMatrix , orentation);
 
-            history[0] = sensorEvent.values[0];
-            history[1] = sensorEvent.values[1];
+            float azimuthInRadians = orentation[0];
+            float azimuthInDegree = (float) Math.toDegrees(azimuthInRadians);
 
 
-            if(Math.abs(sensorEvent.values[0])  > velocityMin){
-                arrHistoryAsisX.add(sensorEvent.values[0]);
+            RotateAnimation rotateAnimation = new RotateAnimation(currentDegree , -azimuthInDegree , Animation.RELATIVE_TO_SELF , 0.5f , Animation.RELATIVE_TO_SELF , 0.5f);
+            rotateAnimation.setDuration(100);
+            rotateAnimation.setRepeatCount(0);
+            rotateAnimation.setFillAfter(true);
+            imageView.startAnimation(rotateAnimation);
+            currentDegree = -azimuthInDegree;
+            degree =  (int) azimuthInDegree;
+
+            if (degree < 0) {
+                degree = 360 + degree;
+            }
+            txtDegree.setText(degree+"");
+            JSONObject jsonData1 = new JSONObject();
+            try {
+                jsonData1.put("getter" , "arduino");
+                jsonData1.put("degree" , degree);
+                led_on_off(jsonData1.toString());
+            } catch (JSONException e) {
+                e.printStackTrace();
             }
 
-            if(Math.abs(sensorEvent.values[1]) > velocityMin){
-                arrHistoryAsisY.add(sensorEvent.values[1]);
-            }
-
-            if (xChange > 2){
-                direction[0] = "LEFT";
-            }
-            else if (xChange < -2){
-                direction[0] = "RIGHT";
-            }
-
-            if (yChange > 2){
-                direction[1] = "DOWN";
-            }
-            else if (yChange < -2){
-                direction[1] = "UP";
-            }
-
-            builder.setLength(0);
-            builder.append("x: ");
-            builder.append(direction[0]);
-            builder.append(" y: ");
-            builder.append(direction[1]);
-
-
-//            Log.e("AAAA" , "Y = " + yChange +"");
-
-            //textView.setText(builder.toString());
-
-            if (System.currentTimeMillis() - lastUpdateTime > 2000){
-
-                float vechX = 0;
-                float vechY = 0;
-
-                for (int i = 0 ; i < arrHistoryAsisX.size() ; i++){
-                    vechX += arrHistoryAsisX.get(i);
-                }
-                for (int i = 0 ; i < arrHistoryAsisY.size() ; i++){
-                    vechY += arrHistoryAsisY.get(i);
-                }
-
-                if (isLastMagnetometerArrayCopied && isLastMagnetometerArrayCopied){
-                    SensorManager.getRotationMatrix(rotateMatrix , null , lastAccelerometer , lastMagnetometer);
-                    SensorManager.getOrientation(rotateMatrix , orentation);
-
-                    float azimuthInRadians = orentation[0];
-                    float azimuthInDegree = (float) Math.toDegrees(azimuthInRadians);
-
-
-                    RotateAnimation rotateAnimation = new RotateAnimation(currentDegree , -azimuthInDegree , Animation.RELATIVE_TO_SELF , 0.5f , Animation.RELATIVE_TO_SELF , 0.5f);
-                    rotateAnimation.setDuration(100);
-                    rotateAnimation.setRepeatCount(0);
-                    rotateAnimation.setFillAfter(true);
-                    imageView.startAnimation(rotateAnimation);
-                    currentDegree = -azimuthInDegree;
-                    degree =  (int) azimuthInDegree;
-
-                    if (degree < 0) {
-                        degree = 360 + degree;
-                        //degree = -degree;
-                    }
-                }
-
-                double thePath = Math.sqrt(Math.pow(Math.abs(vechX) , 2) + Math.pow(Math.abs(vechY) , 2));
-
-                txtD.setText(thePath +"");
-
-                JSONObject jsonData1 = new JSONObject();
-                try {
-                    jsonData1.put("getter" , "arduino");
-                    jsonData1.put("degree" , degree);
-                    led_on_off(jsonData1.toString());
-                } catch (JSONException e) {
-                    e.printStackTrace();
-                }
-
-                if(Math.abs(vechX) > Math.abs(vechY)){
-                    // move left || right
-                    if (vechX > 0 ){
-                        // move right
-
-                        JSONObject jsonData = new JSONObject();
-                        try {
-                            jsonData.put("getter" , "arduino");
-                            jsonData.put("moved" , (int)thePath*10);
-                            jsonData.put("status" , "left");
-                            //jsonData.put("degree" , degree);
-                            led_on_off(jsonData.toString());
-                        } catch (JSONException e) {
-                            e.printStackTrace();
-                        }
-
-                        Log.e("AAAA" , "move left = " + thePath * 10 +" cm");
-                    }else{
-                        JSONObject jsonData = new JSONObject();
-                        try {
-                            jsonData.put("getter" , "arduino");
-                            jsonData.put("moved" , (int)thePath*10);
-                            jsonData.put("status" , "right");
-                            //jsonData.put("degree" , degree);
-                            led_on_off(jsonData.toString());
-                        } catch (JSONException e) {
-                            e.printStackTrace();
-                        }
-                        Log.e("AAAA" , "move right = " + thePath * 10 +" cm");
-                    }
-                }else{
-                    if (vechY > 0 ){
-                        JSONObject jsonData = new JSONObject();
-                        try {
-                            jsonData.put("getter" , "arduino");
-                            jsonData.put("moved" , (int)thePath*10);
-                            jsonData.put("status" , "down");
-                            //jsonData.put("degree" , degree);
-                            led_on_off(jsonData.toString());
-                        } catch (JSONException e) {
-                            e.printStackTrace();
-                        }
-                        Log.e("AAAA" , "move down = " + thePath * 10 +" cm");
-                    }else{
-                        JSONObject jsonData = new JSONObject();
-                        try {
-                            jsonData.put("getter" , "arduino");
-                            jsonData.put("moved" , (int)thePath*10);
-                            jsonData.put("status" , "up");
-                            //jsonData.put("degree" , degree);
-                            led_on_off(jsonData.toString());
-                        } catch (JSONException e) {
-                            e.printStackTrace();
-                        }
-                        Log.e("AAAA" , "move up = " + thePath * 10 +" cm");
-                    }
-                }
-
-                //Log.e("AAAA" , "thePath = " + thePath +"");
-
-                double degreePri = Math.toDegrees(Math.tan(vechX/vechY));
-
-
-
-
-
-//                JSONObject jsonData = new JSONObject();
-//                try {
-//                    jsonData.put("getter" , "arduino");
-//                    jsonData.put("x" , vechX);
-//                    jsonData.put("y" , vechY);
-//                    jsonData.put("moved" , thePath);
-//                    jsonData.put("degree" , degree);
-//                    led_on_off(jsonData.toString());
-//                } catch (JSONException e) {
-//                    e.printStackTrace();
-//                }
-
-                //Log.e("AAAA" , "Moved = " + thePath +"");
-
-                //Log.e("AAAA" , "Da lech = " + degree +"");
-
-                //Log.e("AAAA" , "Da lech " + Math.toDegrees(Math.tan(vechX/vechY)) +"");
-
-
-                //if(Math.abs(vechY) > 1 || Math.abs(vechX) > 1)
-                //Log.e("AAAA" , Math.toDegrees(Math.tan(vechX/vechY)) +"");
-
-                //arrHistoryAsis.add(new Point(vechX , vechY));
-
-                arrHistoryAsisX.clear();
-                arrHistoryAsisY.clear();
-
-//                double path = 0f;
-//
-//                for (int i = arrHistoryAsis.size() - 1 ; i > 0 ; i--){
-//                    double thePath = Math.sqrt(Math.pow(arrHistoryAsis.get(i).getX() - arrHistoryAsis.get(i).getY() , 2) - Math.pow(arrHistoryAsis.get(i-1).getX() - arrHistoryAsis.get(i-1).getY() , 2));
-//                    if(!Double.isNaN(thePath)){
-//                        path -= thePath;
-//                    }
-//
-//                }
-
-                //Log.e("AAAA" , "da cach tam = " + path);
-
-                lastUpdateTime = System.currentTimeMillis();
-            }
+            lastUpdateTime = System.currentTimeMillis();
         }
-
-
     }
 
     @Override
