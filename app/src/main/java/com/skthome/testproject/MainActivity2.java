@@ -11,6 +11,7 @@ import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.animation.Animation;
 import android.view.animation.RotateAnimation;
@@ -26,43 +27,20 @@ import java.io.IOException;
 import java.util.Set;
 import java.util.UUID;
 
-public class MainActivity2 extends AppCompatActivity implements SensorEventListener {
+public class MainActivity2 extends AppCompatActivity {
 
-    TextView textView , txtPWM;
-    ImageView imageView;
-    SensorManager sensorManager;
-    private Sensor accelerometer,magnetometer,gyroscopeSensor , rotationVectorSensor;
-
-    float[] lastAccelerometer = new float[3];
-    float[] lastMagnetometer = new float[3];
-    float[] rotateMatrix = new float[9];
-    float[] orentation = new float[3];
-
-    boolean isLastAccelerometerArrayCopied = false;
-    boolean isLastMagnetometerArrayCopied = false;
-
-    long lastUpdateTime = 0;
-    long lastUpdateTimeMove = 0;
-    float currentDegree = 0f;
-
-    int degree = 0;
-
+    TextView textView, txtPWM;
     BluetoothAdapter myBluetooth = null;
     BluetoothSocket btSocket = null;
     Set<BluetoothDevice> pairedDevices;
     static final UUID myUUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
-    String address = null , name=null;
+    String address = null, name = null;
     TextView t1;
 
-    Button btnEnable , btnDecrea , btnIncrea;
-    boolean isEnable = false , movement = false;
-    int pwm = 127;
-    private float velocityMin = 0.5f;
-    private float[] mGravity;
-    private float mAccelLast;
-    private float mAccelCurrent;
-    private float mAccel;
+    Button btnDecrea, btnIncrea, btnDown, btnUp, btnLeft, btnRight , btnEnable;
+    int pwm = 0;
 
+    boolean enable = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -70,19 +48,15 @@ public class MainActivity2 extends AppCompatActivity implements SensorEventListe
         setContentView(R.layout.activity_main2);
 
         textView = findViewById(R.id.txt);
-        imageView = findViewById(R.id.image);
-        t1= findViewById(R.id.textView1);
-        btnEnable= findViewById(R.id.btnEnable);
-        btnDecrea= findViewById(R.id.btnDecreaPWM);
-        btnIncrea= findViewById(R.id.btnIncreaPWM);
-        txtPWM = findViewById(R.id.txt_pwm);
-        sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
-        accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-        magnetometer = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
-
-        mAccelLast = SensorManager.GRAVITY_EARTH;
-        mAccel = 0.00f;
-        mAccelCurrent = SensorManager.GRAVITY_EARTH;
+        t1 = findViewById(R.id.textView1);
+        btnDecrea = findViewById(R.id.btn_decrease);
+        btnIncrea = findViewById(R.id.btn_increase);
+        btnDown = findViewById(R.id.btnDown);
+        btnUp = findViewById(R.id.btnUp);
+        btnLeft = findViewById(R.id.btnLeft);
+        btnRight = findViewById(R.id.btnRight);
+        btnEnable = findViewById(R.id.btnEnable);
+        txtPWM = findViewById(R.id.txt_value);
 
         try {
             setw();
@@ -93,25 +67,37 @@ public class MainActivity2 extends AppCompatActivity implements SensorEventListe
     }
 
     private void addEvents() {
-        btnEnable.setOnClickListener(view -> {
-            JSONObject jsonData = new JSONObject();
-            try {
-                isEnable = !isEnable;
-                jsonData.put("getter" , "arduino");
-                jsonData.put("enable" , isEnable);
-                btnEnable.setText(isEnable+"");
-                led_on_off(jsonData.toString());
-            } catch (JSONException e) {
-                e.printStackTrace();
+        btnEnable.setOnClickListener(v -> {
+            enable = !enable;
+            if (enable){
+                JSONObject jsonData = new JSONObject();
+                try {
+                    jsonData.put("enable", "enable");
+                    txtPWM.setText(pwm + "");
+                    led_on_off(jsonData.toString());
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+            }else {
+                JSONObject jsonData = new JSONObject();
+                try {
+                    jsonData.put("disable", "disable");
+                    txtPWM.setText(pwm + "");
+                    led_on_off(jsonData.toString());
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
             }
         });
-
         btnDecrea.setOnClickListener(view -> {
             JSONObject jsonData = new JSONObject();
             try {
-                jsonData.put("getter" , "arduino");
-                jsonData.put("pwm" , --pwm);
-                txtPWM.setText(pwm+"");
+                pwm -= 1;
+                if (pwm < 1) {
+                    pwm = 1;
+                }
+                jsonData.put("pwm", pwm -= 1);
+                txtPWM.setText(pwm + "");
                 led_on_off(jsonData.toString());
             } catch (JSONException e) {
                 e.printStackTrace();
@@ -121,12 +107,115 @@ public class MainActivity2 extends AppCompatActivity implements SensorEventListe
         btnIncrea.setOnClickListener(view -> {
             JSONObject jsonData = new JSONObject();
             try {
-                jsonData.put("getter" , "arduino");
-                jsonData.put("pwm" , ++pwm);
-                txtPWM.setText(pwm+"");
+                jsonData.put("pwm", pwm += 1);
+                txtPWM.setText(pwm + "");
                 led_on_off(jsonData.toString());
             } catch (JSONException e) {
                 e.printStackTrace();
+            }
+        });
+
+        btnDown.setOnTouchListener(new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                    JSONObject jsonData = new JSONObject();
+                    try {
+                        jsonData.put("movement", "down");
+                        led_on_off(jsonData.toString());
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                }
+                if (event.getAction() == MotionEvent.ACTION_UP) {
+                    JSONObject jsonData = new JSONObject();
+                    try {
+                        jsonData.put("movement", "idle");
+                        led_on_off(jsonData.toString());
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                }
+
+                return false;
+            }
+        });
+
+        btnLeft.setOnTouchListener(new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                    JSONObject jsonData = new JSONObject();
+                    try {
+                        jsonData.put("movement", "left");
+                        led_on_off(jsonData.toString());
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                }
+                if (event.getAction() == MotionEvent.ACTION_UP) {
+                    JSONObject jsonData = new JSONObject();
+                    try {
+                        jsonData.put("movement", "idle");
+                        led_on_off(jsonData.toString());
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                }
+
+                return false;
+            }
+        });
+
+        btnRight.setOnTouchListener(new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                    JSONObject jsonData = new JSONObject();
+                    try {
+                        jsonData.put("movement", "right");
+                        led_on_off(jsonData.toString());
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                }
+                if (event.getAction() == MotionEvent.ACTION_UP) {
+                    JSONObject jsonData = new JSONObject();
+                    try {
+                        jsonData.put("movement", "idle");
+                        led_on_off(jsonData.toString());
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                }
+
+                return false;
+            }
+        });
+
+        btnUp.setOnTouchListener(new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                    JSONObject jsonData = new JSONObject();
+                    try {
+                        jsonData.put("movement", "up");
+                        led_on_off(jsonData.toString());
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                }
+                if (event.getAction() == MotionEvent.ACTION_UP) {
+                    JSONObject jsonData = new JSONObject();
+                    try {
+                        jsonData.put("movement", "idle");
+                        led_on_off(jsonData.toString());
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                }
+
+                return false;
             }
         });
     }
@@ -135,154 +224,36 @@ public class MainActivity2 extends AppCompatActivity implements SensorEventListe
         bluetooth_connect_device();
     }
 
-    private void bluetooth_connect_device() throws IOException{
-        try{
+    private void bluetooth_connect_device() throws IOException {
+        try {
             myBluetooth = BluetoothAdapter.getDefaultAdapter();
             address = myBluetooth.getAddress();
             pairedDevices = myBluetooth.getBondedDevices();
-            if (pairedDevices.size()>0){
-                for(BluetoothDevice bt : pairedDevices){
-                    address=bt.getAddress();name = bt.getName();
-                    Toast.makeText(getApplicationContext(),"Connected", Toast.LENGTH_SHORT).show();
+            if (pairedDevices.size() > 0) {
+                for (BluetoothDevice bt : pairedDevices) {
+                    address = bt.getAddress();
+                    name = bt.getName();
+                    Toast.makeText(getApplicationContext(), "Connected", Toast.LENGTH_SHORT).show();
                 }
             }
+        } catch (Exception we) {
         }
-        catch(Exception we){}
         myBluetooth = BluetoothAdapter.getDefaultAdapter();//get the mobile bluetooth device
         BluetoothDevice dispositivo = myBluetooth.getRemoteDevice(address);//connects to the device's address and checks if it's available
         btSocket = dispositivo.createInsecureRfcommSocketToServiceRecord(myUUID);//create a RFCOMM (SPP) connection
         btSocket.connect();
-        try { t1.setText("BT Name: "+name+"\nBT Address: "+address); }
-        catch(Exception e){}
+        try {
+            t1.setText("BT Name: " + name + "\nBT Address: " + address);
+        } catch (Exception e) {
+        }
     }
 
-    private void led_on_off(String i){
-        try{
-            if (btSocket!=null){
+    private void led_on_off(String i) {
+        try {
+            if (btSocket != null) {
                 btSocket.getOutputStream().write(i.getBytes());
             }
+        } catch (Exception e) {
         }
-        catch (Exception e){
-        }
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        sensorManager.registerListener(this , accelerometer , SensorManager.SENSOR_DELAY_NORMAL);
-        sensorManager.registerListener(this , magnetometer , SensorManager.SENSOR_DELAY_NORMAL);
-
-    }
-
-    @Override
-    protected void onPause() {
-        super.onPause();
-        sensorManager.unregisterListener(this);
-    }
-
-    @Override
-    public void onSensorChanged(SensorEvent sensorEvent) {
-        Sensor sensor = sensorEvent.sensor;
-        if (sensorEvent.sensor == accelerometer){
-            System.arraycopy(sensorEvent.values , 0  , lastAccelerometer , 0 , sensorEvent.values.length);
-            isLastAccelerometerArrayCopied = true;
-        }else if(sensorEvent.sensor == magnetometer){
-            System.arraycopy(sensorEvent.values , 0  , lastMagnetometer , 0 , sensorEvent.values.length);
-            isLastMagnetometerArrayCopied = true;
-        }
-
-        if (isLastMagnetometerArrayCopied && isLastMagnetometerArrayCopied && System.currentTimeMillis() - lastUpdateTime > 100){
-            SensorManager.getRotationMatrix(rotateMatrix , null , lastAccelerometer , lastMagnetometer);
-            SensorManager.getOrientation(rotateMatrix , orentation);
-
-            float azimuthInRadians = orentation[0];
-            float azimuthInDegree = (float) Math.toDegrees(azimuthInRadians);
-
-
-            RotateAnimation rotateAnimation = new RotateAnimation(currentDegree , -azimuthInDegree , Animation.RELATIVE_TO_SELF , 0.5f , Animation.RELATIVE_TO_SELF , 0.5f);
-            rotateAnimation.setDuration(100);
-            rotateAnimation.setRepeatCount(0);
-            rotateAnimation.setFillAfter(true);
-            imageView.startAnimation(rotateAnimation);
-            currentDegree = -azimuthInDegree;
-            lastUpdateTime = System.currentTimeMillis();
-            degree =  (int) azimuthInDegree;
-
-            if (degree < 0) {
-                degree = 360 + degree;
-                //degree = -degree;
-            }
-            textView.setText(degree+"");
-
-            JSONObject jsonData = new JSONObject();
-            try {
-                jsonData.put("getter" , "arduino");
-                jsonData.put("conner_robot" , degree);
-                led_on_off(jsonData.toString());
-            } catch (JSONException e) {
-                e.printStackTrace();
-            }
-        }
-        if (sensor.getType() == Sensor.TYPE_ACCELEROMETER ){
-            mGravity = sensorEvent.values.clone();
-            // Shake detection
-            float x = mGravity[0];
-            float y = mGravity[1];
-            float z = mGravity[2];
-            mAccelLast = mAccelCurrent;
-            mAccelCurrent = (float) Math.sqrt(x*x + y*y + z*z);
-            float delta = mAccelCurrent - mAccelLast;
-            mAccel = mAccel * 0.9f + delta;
-            // Make this higher or lower according to how much
-            // motion you want to detect
-            if(mAccel > velocityMin){
-                // do something
-                lastUpdateTimeMove = System.currentTimeMillis();
-                if (!movement){
-                    movement = true;
-                    JSONObject jsonData = new JSONObject();
-                    try {
-                        jsonData.put("getter" , "arduino");
-                        //jsonData.put("speed_robot" , mAccel);
-                        jsonData.put("move" , "true");
-                        led_on_off(jsonData.toString());
-                        Log.e("AAAA" , movement+"");
-                    } catch (JSONException e) {
-                        e.printStackTrace();
-                    }
-                }
-
-            }else {
-                if (movement && System.currentTimeMillis() - lastUpdateTimeMove > 500){
-                    lastUpdateTimeMove = System.currentTimeMillis();
-                    movement = false;
-                    JSONObject jsonData = new JSONObject();
-                    try {
-                        jsonData.put("getter" , "arduino");
-                        //jsonData.put("speed_robot" , mAccel);
-                        jsonData.put("move" , "false");
-                        led_on_off(jsonData.toString());
-                        Log.e("AAAA" , movement+"");
-                    } catch (JSONException e) {
-                        e.printStackTrace();
-                    }
-                }
-
-            }
-
-        }
-    }
-
-    @Override
-    public void onAccuracyChanged(Sensor sensor, int i) {
-
-    }
-
-    public void increaseVel(View view) {
-        velocityMin += 0.1f;
-    }
-
-    public void decreaseVel(View view) {
-        velocityMin -= 0.1f;
     }
 }
